@@ -43,6 +43,12 @@ type SourceMap = {
   sourcesContent: Array<string>
 };
 
+type Generated = {
+  code: string,
+  map?: SourceMap,
+  statistics: SerializerStatistics
+};
+
 function isSameNode(left, right) {
   let type = left.type;
 
@@ -1385,6 +1391,7 @@ export class Serializer {
           }
           instanceBatches = newInstanceBatches;
         }
+        this.statistics.functionClones += instanceBatches.length - 1;
 
         for (instances of instanceBatches) {
           let capturedScopeDecl = allocateModifiedBindingVariables.call(this, instances[0], names, true);
@@ -1593,7 +1600,7 @@ export class Serializer {
     return false;
   }
 
-  serialize(filename: string, code: string, sourceMaps: boolean): { generated?: { code: string, map?: SourceMap } } {
+  serialize(filename: string, code: string, sourceMaps: boolean): { generated?: Generated } {
     this._emitGenerator(this.generator);
     invariant(this.declaredDerivedIds.size <= this.preludeGenerator.derivedIds.size);
 
@@ -1693,11 +1700,17 @@ export class Serializer {
       }
     };
 
-    return {
-      generated: generate(
+    let generated = generate(
         ast,
         { sourceMaps: sourceMaps, sourceFileName: filename },
-        code)
+        code);
+
+    return {
+      generated: {
+        code: generated.code,
+        map: generated.map,
+        statistics: this.statistics
+      }
     };
   }
 
